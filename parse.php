@@ -1,9 +1,5 @@
 <?php
 
-
-//Заголовок статьи
-//$pageTitle = "Tank";
-
 if (isset($_POST["done"])) {
 
 
@@ -14,26 +10,43 @@ if (isset($_POST["done"])) {
         }
 
 
-//Задаём endpoint Wiki и параметры для запроса
+
 $endPoint = "https://en.wikipedia.org/w/api.php";
 $params = [
     "action" => "query",
-    "prop" => "images",
-    "titles" => $pageTitle,
+    "list" => "categorymembers",
+    "cmtitle" => "Category:".$pageTitle,
+    "cmtype" => "page",
     "format" => "json"
 ];
 
-//Формируем URL
 $url = $endPoint . "?" . http_build_query( $params );
 
-$ch = curl_init( $url ); //Инициализируем curl
-curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true ); //Устанавливаем опцию для возврата результата запроса в виде строки
-$output = curl_exec( $ch ); // Выполняем запрос и сохраняем результат.
-curl_close( $ch ); // Закрываем соединение
+$ch = curl_init( $url );
+curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+$output = curl_exec( $ch );
+curl_close( $ch );
 
-$result = json_decode( $output, true ); // Декодируем полученный JSON ответ в ассоциативный массив.
+$result = json_decode( $output, true );
 
-foreach ($result["query"]["pages"] as $page) {          // Перебираем страницы из результата запроса
+foreach( $result["query"]["categorymembers"] as $cat ) {
+                $params = [
+                "action" => "query",
+                "prop" => "images",
+                "titles" => $cat["title"],
+                "format" => "json"
+        ];
+
+        $url = $endPoint . "?" . http_build_query( $params );
+
+        $ch = curl_init( $url );
+        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+        $output = curl_exec( $ch );
+        curl_close( $ch );
+
+        $result = json_decode( $output, true );
+
+        foreach ($result["query"]["pages"] as $page) {          // Перебираем страницы из результата запроса
             if (isset($page["images"])) {               // Проверяем наличие изображений на странице.
                 foreach ($page["images"] as $image) {   // Перебираем изображения на странице.
                                         $params = [     // Задаем параметры для нового запроса, чтобы получить информацию о каждом изображении.
@@ -66,5 +79,5 @@ foreach ($result["query"]["pages"] as $page) {          // Перебираем 
                 }
             }
        }
-
+}
 }
