@@ -3,7 +3,7 @@
 <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>WikiApiParser</title>
+        <title>MediaWikiParser</title>
         <link rel="stylesheet" href='static/css/dataTables.bootstrap5.css'>
         <link rel="stylesheet" href='static/css/bootstrap.min.css'>
         <link rel="stylesheet" href='static/css/style.css'>
@@ -19,120 +19,164 @@
 <body>
 
 
-        <div class="wrapper">
-                <div id="content">
-                        <h1>Result</h1>
+<div class="wrapper">
+        <div id="content">
 
-                        <?php
+                <h1>MediaWikiParser</h1>
+                <form action="parse.php" method="post">
+                        <p>Category: <input type="text" name="category" value="Mountains"></p>
+                        <p>Year: <input type="number" name="year" min="1970" max="<?php echo date('Y'); ?>" step="1" value="2024"></p>
+                        <p><input type="Submit" value="Confirm" name="done"></p>
+                </form>
+                <div id="plot"></div>
 
-                                if (isset($_POST["done"])) {
+           <?php
+                if (isset($_POST["done"])) {
+                   echo '<h1>'. 'Result' . '</h1>';
+
+                   if (empty($_POST["category"])){
+                          $pageTitle = "Mountains";
+                   } else{
+                          $pageTitle = $_POST["category"];
+                   }
+
+                $ImageData = array(
+                        "01" => 0,
+                        "02" => 0,
+                        "03" => 0,
+                        "04" => 0,
+                        "05" => 0,
+                        "06" => 0,
+                        "07" => 0,
+                        "08" => 0,
+                        "09" => 0,
+                        "10" => 0,
+                        "11" => 0,
+                        "12" => 0
+                );
 
 
-                                        if (empty($_POST["topic"])){
-                                                $pageTitle = "Cats";
-                                        } else{
-                                                $pageTitle = $_POST["topic"];
-                                        }
+                        // Задаем параметры запроса
+                        $params = array(
+                                'action' => 'query',
+                                'format' => 'json',
+                                'generator' => 'categorymembers',
+                                'gcmtitle' => 'Category:'.$pageTitle, // Замените на название вашей категории
+                                'gcmlimit' => 'max', // Получить максимальное количество элементов
+                                'prop' => 'imageinfo|categories|revisions',
+                                'iiprop' => 'url|user|metadata', // Запрашиваем URL изображения, автора и метаданные
+                                'iilimit' => '1', // Получить только одно изображение
+                                'iiurlwidth' => 400,
+                                'rvprop' => 'user', // Получить автора
+                        );
 
-
-
-                                $endPoint = "https://en.wikipedia.org/w/api.php";
-                                $params = [
-                                "action" => "query",
-                                "list" => "categorymembers",
-                                "cmtitle" => "Category:".$pageTitle,
-                                "cmtype" => "page",
-                                "cmlimit" => 1,
-                                "format" => "json"
-                                ];
-
-                                $url = $endPoint . "?" . http_build_query( $params );
-
-                                $ch = curl_init( $url );
-                                curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-                                $output = curl_exec( $ch );
-                                curl_close( $ch );
-
-                                $result = json_decode( $output, true );
-
-                                // Вывод начала таблицы
-                                echo "<table id='example' class='table table-striped' style='width:100%'>";
-                                echo "<thead>
-                                                        <tr>
-                                                                <th>User</th>
-                                                                <th>Timestamp</th>
-                                                                <th>Link</th>
+                        // Формируем URL для запроса
+                        $url = 'https://commons.wikimedia.org/w/api.php?' . http_build_query($params);
+                        // Получаем результат через API
+                        $result = file_get_contents($url);
+                        // Декодируем JSON-ответ
+                        $data = json_decode($result, true);
+                        // Вывод начала таблицы
+                        echo "<table id='example' class='table table-striped' style='width:100%'>";
+                        echo "<thead>
+                                                <tr>
+                                                                <th>Title</th>
                                                                 <th>Image</th>
-                                                        </tr>
-                                                </thead>";
-                                echo "<tbody>";
-                                foreach( $result["query"]["categorymembers"] as $cat ) {
-                                                $params = [
-                                                "action" => "query",
-                                                "prop" => "images",
-                                                "titles" => $cat["title"],
-                                                "format" => "json"
-                                        ];
+                                                                <th>Author</th>
+                                                                <th>Link</th>
+                                                                <th>Metadata</th>
+                                                </tr>
+                                        </thead>";
+                        echo "<tbody>";
 
-                                        $url = $endPoint . "?" . http_build_query( $params );
 
-                                        $ch = curl_init( $url );
-                                        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-                                        $output = curl_exec( $ch );
-                                        curl_close( $ch );
+                        // Проверяем наличие данных и выводим результат
+                        if (isset($data['query']['pages'])) {
+                                foreach ($data['query']['pages'] as $pageId => $page) {
+                                        if (isset($page['imageinfo'])) {
+                                                foreach ($page['imageinfo'] as $image) {
 
-                                        $result = json_decode( $output, true );
+                                                        echo "<tr>";
+                                                                echo '<td>'. $page['title'] . '</td>';
+                                                                echo  '<td>'. '<img src="' .  $image['thumburl']  . '" alt="Image">'.'</td>';
+                                                                //echo  '<td>'. '<img src="' . $image['thumburl'] . '</td>';
+                                                                if (isset($image['user'])) {
+                                                                        echo '<td>'. $image['user'] . '</td>';
+                                                                } else {
+                                                                        echo '<td>'. 'None' . '</td>';
+                                                                }
+                                                                echo "<td><a href='" .  $image["descriptionurl"] . "'>Link on page with description</a></td>";
 
-                                        foreach ($result["query"]["pages"] as $page) {          // Перебираем страницы из результата запроса
-                                        if (isset($page["images"])) {               // Проверяем наличие изображений на странице.
-                                                foreach ($page["images"] as $image) {   // Перебираем изображения на странице.
-                                                                        $params = [     // Задаем параметры для нового запроса, чтобы получить информацию о каждом изображении.
-                                                                                "action" => "query",
-                                                                                "format" => "json",
-                                                                                "prop" => "imageinfo",
-                                                                                "titles" => $image["title"],
-                                                                                "iilimit" => 2,
-                                                                                "iiprop" => "timestamp|user|url",
-                                                                                "iiurlwidth" => 200
-                                                                        ];
-
-                                                                        // Формируем URL для нового запроса.
-                                                                        $url = $endPoint . "?" . http_build_query( $params );
-
-                                                                        $ch = curl_init( $url );
-                                                                        curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
-                                                                        $output = curl_exec( $ch );
-                                                                        curl_close( $ch );
-
-                                                                        $result = json_decode( $output, true );
-
-                                                                        // Перебираем информацию об изображениях.
-                                                                        foreach( $result["query"]["pages"] as $k => $v ) {
-
-                                                                                echo "<tr>";
-                                                                                        echo '<td>'.( $v['title'] . ' is uploaded by User:' . $v['imageinfo'][0]['user']).'</td>';
-                                                                                        echo '<td>'. $v['imageinfo'][0]['timestamp'].'</td>';
-                                                                                        echo "<td><a href='" .  $v["imageinfo"][0]["descriptionurl"] . "'>Link on page with description</a><br></td>";
-                                                                                        echo  '<td>'. '<img src="' .  $v["imageinfo"][0]["responsiveUrls"]["2"] . '" alt="Image">'.'</td>';
-                                                                                echo "</tr>";
-                                                                                //echo '<li>' . ( $v["title"] . " is uploaded by User:" . $v["imageinfo"][0]["user"] . " " ) . '</li>';
-                                                                                //echo '<li>' . 'timestamp:'  .  $v["imageinfo"][0]["timestamp"] . '</li> ';
-                                                                                //echo "<a href='" .  $v["imageinfo"][0]["descriptionurl"] . "'>Link on page with description</a><br>";
-                                                                                //echo '<img src="' .  $v["imageinfo"][0]["responsiveUrls"]["2"] . '" alt="Image">';
+                                                                echo '<td>';
+                                                                foreach ($image['metadata'] as $item) {
+                                                                        if ($item["name"] == 'DateTimeOriginal'){
+                                                                                // Преобразовываем строку в объект DateTime
+                                                                                $date = DateTime::createFromFormat("Y:m:d H:i:s", $item["value"]);
+                                                                                $year = $date->format("Y");
+                                                                                $month = $date->format("m");
+                                                                                if ($year == $_POST["year"]){
+                                                                                        $ImageData[$month] += 1;
+                                                                                }
+                                                                                echo '<li>' . $ImageData['08'] . '</li>';
                                                                         }
+                                                                        echo '<li>'. $item["name"] . ": " . $item["value"] . '</li>';
+                                                                }
+                                                                echo '</td>';
+
+                                                        echo "</tr>";
+
                                                 }
                                         }
                                 }
-                                }
-                                        echo "</tbody>";
-                                        echo "</table>";
-                                }
+                        } else {
+                                echo 'No data!';
+                        }
 
-                        ?>
+                 echo "</tbody>";
+                 echo "</table>";
 
 
-                </div>
+                //$months = array_keys($ImageData);
+                $months = array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
+                $counts = array_values($ImageData);
+
+                $plotly_data = [
+                [
+                        'x' => $months,
+                        'y' => $counts,
+                        'type' => 'bar'
+                ]
+                ];
+
+                $plotly_json = json_encode($plotly_data);
+          }
+
+          ?>
+
+
+
+
+
         </div>
-        
+</div>
+
+<script>
+        // JavaScript код для построения диаграммы с помощью Plotly
+        var data = <?php echo $plotly_json; ?>;
+
+
+        var layout = {
+        title: 'Number of Images by Month',
+        xaxis: {
+                title: 'Month'
+        },
+        yaxis: {
+                title: 'Count of Images'
+        }
+        };
+
+        Plotly.newPlot('plot', data, layout);
+</script>
+
 </body>
 </html>
