@@ -64,7 +64,7 @@
                                 'gcmtitle' => 'Category:'.$pageTitle, // Замените на название вашей категории
                                 'gcmlimit' => 'max', // Получить максимальное количество элементов
                                 'prop' => 'imageinfo|categories|revisions',
-                                'iiprop' => 'url|user|metadata', // Запрашиваем URL изображения, автора и метаданные
+                                'iiprop' => 'timestamp|url|user|metadata', // Запрашиваем URL изображения, автора и метаданные
                                 'iilimit' => '1', // Получить только одно изображение
                                 'iiurlwidth' => 400,
                                 'rvprop' => 'user', // Получить автора
@@ -80,13 +80,14 @@
                         echo "<table id='example' class='table table-striped' style='width:100%'>";
                         echo "<thead>
                                                 <tr>
-                                                                <th>Title</th>
-                                                                <th>Image</th>
-                                                                <th>Author</th>
-                                                                <th>Link</th>
-                                                                <th>Metadata</th>
+                                                        <th>Title</th>
+                                                        <th>Image</th>
+                                                        <th>Author</th>
+                                                        <th>Link</th>
+                                                        <th>Timestamp</th>
+                                                        <th>Metadata</th>
                                                 </tr>
-                                        </thead>";
+                                </thead>";
                         echo "<tbody>";
 
 
@@ -96,34 +97,37 @@
                                         if (isset($page['imageinfo'])) {
                                                 foreach ($page['imageinfo'] as $image) {
 
+
                                                         echo "<tr>";
                                                                 echo '<td>'. $page['title'] . '</td>';
                                                                 echo  '<td>'. '<img src="' .  $image['thumburl']  . '" alt="Image">'.'</td>';
-                                                                //echo  '<td>'. '<img src="' . $image['thumburl'] . '</td>';
+
                                                                 if (isset($image['user'])) {
                                                                         echo '<td>'. $image['user'] . '</td>';
                                                                 } else {
                                                                         echo '<td>'. 'None' . '</td>';
                                                                 }
+
                                                                 echo "<td><a href='" .  $image["descriptionurl"] . "'>Link on page with description</a></td>";
+
+                                                                echo '<td>' . $image["timestamp"] . '</td>';
+                                                                $date = new DateTime($image["timestamp"]);
+                                                                $year = $date->format("Y");
+                                                                $month = $date->format("m");
+                                                                if ($year == $_POST["year"]){
+                                                                        $ImageData[$month] += 1;
+                                                                }
+
 
                                                                 echo '<td>';
                                                                 foreach ($image['metadata'] as $item) {
-                                                                        if ($item["name"] == 'DateTimeOriginal'){
-                                                                                // Преобразовываем строку в объект DateTime
-                                                                                $date = DateTime::createFromFormat("Y:m:d H:i:s", $item["value"]);
-                                                                                $year = $date->format("Y");
-                                                                                $month = $date->format("m");
-                                                                                if ($year == $_POST["year"]){
-                                                                                        $ImageData[$month] += 1;
-                                                                                }
-                                                                                echo '<li>' . $ImageData['08'] . '</li>';
-                                                                        }
+
                                                                         echo '<li>'. $item["name"] . ": " . $item["value"] . '</li>';
                                                                 }
                                                                 echo '</td>';
 
                                                         echo "</tr>";
+
 
                                                 }
                                         }
@@ -155,28 +159,30 @@
 
 
 
-
-
         </div>
 </div>
 
+
+
+
 <script>
-        // JavaScript код для построения диаграммы с помощью Plotly
-        var data = <?php echo $plotly_json; ?>;
+// JavaScript код для построения диаграммы с помощью Plotly
+var data = <?php echo $plotly_json; ?>;
 
 
-        var layout = {
-        title: 'Number of Images by Month',
-        xaxis: {
-                title: 'Month'
-        },
-        yaxis: {
-                title: 'Count of Images'
-        }
-        };
+var layout = {
+    title: 'Number of Images by Month',
+    xaxis: {
+        title: 'Month'
+    },
+    yaxis: {
+        title: 'Count of Images'
+    }
+};
 
-        Plotly.newPlot('plot', data, layout);
+Plotly.newPlot('plot', data, layout);
 </script>
+
 
 </body>
 </html>
