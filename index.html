@@ -3,16 +3,148 @@
 <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>WikiApiParser</title>             
+        <title>MediaWikiParser</title>
+        <link rel="stylesheet" href='static/css/dataTables.bootstrap5.css'>
+        <link rel="stylesheet" href='static/css/bootstrap.min.css'>
+        <link rel="stylesheet" href='static/css/style.css'>
+        <script type="text/javascript" language="javascript" src='static/js/jquery-3.7.1.js'></script>
+        <script type="text/javascript" language="javascript" src='static/js/dataTables.js'></script>
+        <script type="text/javascript" language="javascript" src='static/js/dataTables.bootstrap5.js'></script>
+        <script type="text/javascript" language="javascript" src='static/js/bootstrap.bundle.min.js'></script>
+        <script src="https://cdn.plot.ly/plotly-2.30.0.min.js" charset="utf-8"></script>
 </head>
+
 <body>
 
-<h1>WikiApiParser</h1>
+    <div class="wrapper">
+        <div id="content">
+		
+            <h1>MediaWikiParser</h1>
 
-        <form action="parse.php" method="post">
-                <p>Topic: <input type="text" name="topic"></p>
-                <p><input type="Submit" value="Confirm" name="done"></p>
-        </form>
+            <form>
+                        <p>Category: <input id="categ" type="text" value="Apples"></p>
+                        <p>Author: <input id="author" type="text" value="Judgefloro"></p>
+                        <p>Date: <input id="yearr" type="date" min="1970-01-01" value="2021-03-21"></p>
+                        <p>Login: <input id="login" type="text"></p>
+                        <p>Password: <input id="password" type="text"></p>
+                        <p><input type="button" onclick="updateDataTable()" value="Confirm" name="done"></p>
+            </form>
+
+
+
+            <div id="visual" style="display: none;">
+				<h1>Results</h1>
+				<div id="plot"></div>
+				<table id="example" class="table table-striped" style="width:100%">
+					<thead>
+						<tr>
+							<th>Title</th>
+							<th>Image</th>
+							<th>Author</th>
+							<th>Link</th>
+							<th>Timestamp</th>
+							<th>Metadata</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+            </div>
+
+           <div id="error">
+                <p>Authorization is failed...</p>
+           </div>
+
+
+
+        </div>
+    </div>
+
+<script>
+
+  var table = $('#example').DataTable();
+  var currentYear = new Date().getFullYear();
+  document.getElementById('yearr').setAttribute('max', currentYear);
+  document.getElementById("error").style.display = "none";
+
+
+  // Функция для обновления таблицы DataTables
+    function updateDataTable() {
+        table.clear().draw();
+        var category = $('#categ').val();
+        var yearr = $('#yearr').val();
+        var author = $('#author').val();
+        var login = $('#login').val();
+        var password = $('#password').val();
+        $.ajax({
+            url: "get_results.php",
+            type: "POST",
+                        data: {
+                                category: category,
+                                yearr: yearr,
+                                author: author,
+                                login: login,
+                                password: password
+                        },
+            dataType: "json",
+            success: function(response) {
+                                fetchData(response);
+                                graphs(response);
+            },
+            error: function(xhr, status, error) {
+                                console.error("ERROR!!!:", error);
+            }
+        });
+    }
+
+    function fetchData(response) {
+		console.log(response);
+		if (response != "Authorization is failed..."){
+				document.getElementById("visual").style.display = "none";
+				document.getElementById("visual").style.display = "block";
+				// Очищаем таблицу перед добавлением новых данных
+				table.clear();
+
+				// Заполняем таблицу данными
+				response[0].forEach(function(item){
+						table.row.add([
+								item.title,
+								"<img src='"+item.thumburl+"' alt='Image'/>",
+								item.user,
+								"<a href='"+item.descriptionurl+"'>Link on page with description</a>",
+								item.timestamp,
+								item.metadata.join("")
+						]).draw();
+
+				})
+
+		}else{
+				document.getElementById("error").style.display = "block";
+				Plotly.deleteTraces('plot', 0);
+				document.getElementById("visual").style.display = "none";
+		}
+	}
+
+
+
+   function graphs(response){
+        var data = response[1];
+
+        var layout = {
+                title: 'Number of Images by Month',
+                xaxis: {
+                        title: 'Month'
+                },
+                yaxis: {
+                        title: 'Count of Images'
+                }
+        };
+
+        Plotly.newPlot('plot', data, layout);
+        }
+
+ </script>
+
+
 
 </body>
 </html>
